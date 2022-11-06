@@ -1,11 +1,19 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ColorChoice};
 use serde::{Deserialize, Serialize};
 
 mod modules;
 use modules::mpd;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(
+    author,
+    version,
+    about = "Efficiently generate content for statusbars",
+    long_about = None,
+    subcommand_required = true,
+    arg_required_else_help = true,
+    color = ColorChoice::Auto,
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -13,7 +21,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Mpd { },
+    Start(Start),
+}
+
+#[derive(Parser)]
+#[command(about = "Start a module, do `pfui start --help` for list of available modules")]
+struct Start {
+    #[structopt(subcommand)]
+    pub module: Modules,
+}
+
+#[derive(Subcommand)]
+enum Modules {
+    Mpd {},
 }
 
 trait Module {
@@ -28,13 +48,15 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::Mpd { .. }) => {
-            if cfg!(feature = "mpd") {
-                let module = mpd::Mpd {}.start();
-            } else {
-                println!("Feature not enabled");
+        Some(Commands::Start(start)) => match start.module {
+            Modules::Mpd {} => {
+                if cfg!(feature = "mpd") {
+                    mpd::Mpd {}.start();
+                } else {
+                    println!("Feature not enabled");
+                }
             }
-        }
+        },
         None => {}
     }
 }
