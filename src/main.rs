@@ -40,7 +40,7 @@ enum Modules {
 
 #[derive(Debug, Serialize)]
 struct Output<T: serde::Serialize> {
-    ok: bool,
+    ok: u8,
     data: Option<T>,
 }
 
@@ -50,15 +50,17 @@ trait Module {
     type Connection;
     fn connect(&self, timeout: u64) -> Self::Connection;
 
-    fn output<T: serde::Serialize>(&self, info: &Option<T>) {
+    fn output(&self, conn: &mut Self::Connection);
+
+    fn print<T: serde::Serialize>(&self, info: &Option<T>) {
         let output = if let Some(data) = info {
             Output {
-                ok: true,
+                ok: 1,
                 data: Some(data),
             }
         } else {
             Output {
-                ok: false,
+                ok: 0,
                 data: None,
             }
         };
@@ -73,7 +75,7 @@ fn main() {
         Some(Commands::Start(start)) => match start.module {
             Modules::Mpd {} => {
                 if cfg!(feature = "mpd") {
-                    while let Err(..) = (mpd::Mpd {}.start(10)) { }
+                    while let Err(..) = (mpd::Mpd {}.start(5)) { }
                     exit(0);
                 } else {
                     println!("Feature not enabled");

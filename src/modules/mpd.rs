@@ -162,21 +162,23 @@ impl Module for Mpd {
         let mut conn_ = Client::connect("127.0.0.1:6600");
         while let Err(..) = conn_ {
             conn_ = Client::connect("127.0.0.1:6600");
-            self.output(&None::<Data>);
+            self.print(&None::<Data>);
             sleep(Duration::new(timeout, 0));
         }
         return conn_.unwrap();
     }
+    fn output(&self, conn: &mut Self::Connection) {
+        let info = get_info(conn);
+        self.print(&info);
+    }
     fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
         let mut conn = self.connect(timeout);
+        self.output(&mut conn);
         loop {
             let guard = conn.idle(&[Subsystem::Player, Subsystem::Mixer, Subsystem::Options])?;
             match guard.get() {
-                Ok(_) => {
-                    let info = get_info(&mut conn);
-                    self.output(&info);
-                }
-                Err(_) => {},
+                Ok(_) => self.output(&mut conn),
+                Err(_) => {}
             }
         }
     }
