@@ -157,24 +157,26 @@ fn get_info(conn: &mut Client) -> Option<Data> {
 pub struct Mpd {}
 
 impl Module for Mpd {
-    fn start(&self, timeout: u64) {
+    type Connection = Client;
+    fn connect(&self, timeout: u64) -> Self::Connection {
         let mut conn_ = Client::connect("127.0.0.1:6600");
         while let Err(..) = conn_ {
             conn_ = Client::connect("127.0.0.1:6600");
             self.output(&None::<Data>);
             sleep(Duration::new(timeout, 0));
         }
-        let mut conn = conn_.unwrap();
+        return conn_.unwrap();
+    }
+    fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
+        let mut conn = self.connect(timeout);
         loop {
-            let guard = conn
-                .idle(&[Subsystem::Player, Subsystem::Mixer, Subsystem::Options])
-                .unwrap();
+            let guard = conn.idle(&[Subsystem::Player, Subsystem::Mixer, Subsystem::Options])?;
             match guard.get() {
                 Ok(_) => {
                     let info = get_info(&mut conn);
                     self.output(&info);
                 }
-                Err(_) => continue,
+                Err(_) => {},
             }
         }
     }

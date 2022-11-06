@@ -1,3 +1,5 @@
+use std::{fmt, thread::sleep, process::exit};
+
 use clap::{ColorChoice, Parser, Subcommand};
 
 mod modules;
@@ -43,11 +45,17 @@ struct Output<T: serde::Serialize> {
 }
 
 trait Module {
-    fn start(&self, timeout: u64);
+    fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>>;
+
+    type Connection;
+    fn connect(&self, timeout: u64) -> Self::Connection;
 
     fn output<T: serde::Serialize>(&self, info: &Option<T>) {
         let output = if let Some(data) = info {
-            Output { ok: true, data: Some(data) }
+            Output {
+                ok: true,
+                data: Some(data),
+            }
         } else {
             Output {
                 ok: false,
@@ -65,7 +73,8 @@ fn main() {
         Some(Commands::Start(start)) => match start.module {
             Modules::Mpd {} => {
                 if cfg!(feature = "mpd") {
-                    mpd::Mpd {}.start(10);
+                    while let Err(..) = (mpd::Mpd {}.start(10)) { }
+                    exit(0);
                 } else {
                     println!("Feature not enabled");
                 }
