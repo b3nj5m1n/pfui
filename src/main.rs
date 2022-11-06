@@ -1,8 +1,8 @@
-use clap::{Parser, Subcommand, ColorChoice};
-use serde::{Deserialize, Serialize};
+use clap::{ColorChoice, Parser, Subcommand};
 
 mod modules;
 use modules::mpd;
+use serde::Serialize;
 
 #[derive(Parser)]
 #[command(
@@ -36,11 +36,25 @@ enum Modules {
     Mpd {},
 }
 
-trait Module {
-    fn start(&self);
+#[derive(Debug, Serialize)]
+struct Output<T: serde::Serialize> {
+    ok: bool,
+    data: Option<T>,
+}
 
-    fn output<T: serde::Serialize>(&self, info: &T) {
-        println!("\n{}", serde_json::to_string(info).unwrap());
+trait Module {
+    fn start(&self, timeout: u64);
+
+    fn output<T: serde::Serialize>(&self, info: &Option<T>) {
+        let output = if let Some(data) = info {
+            Output { ok: true, data: Some(data) }
+        } else {
+            Output {
+                ok: false,
+                data: None,
+            }
+        };
+        println!("\n{}", serde_json::to_string(&output).unwrap());
     }
 }
 
@@ -51,7 +65,7 @@ fn main() {
         Some(Commands::Start(start)) => match start.module {
             Modules::Mpd {} => {
                 if cfg!(feature = "mpd") {
-                    mpd::Mpd {}.start();
+                    mpd::Mpd {}.start(10);
                 } else {
                     println!("Feature not enabled");
                 }
