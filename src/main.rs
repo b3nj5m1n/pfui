@@ -45,13 +45,19 @@ struct Output<T: serde::Serialize> {
 }
 
 trait Module {
+    type Connection;
+
+    /// This starts the event listening loop
     fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>>;
 
-    type Connection;
+    /// This connects to a server or similar, returns whatever is necessary to communicate with the
+    /// server
     fn connect(&self, timeout: u64) -> Self::Connection;
 
+    /// This generates the data and calls print
     fn output(&self, conn: &mut Self::Connection);
 
+    /// This actually prints the json representation of the data
     fn print<T: serde::Serialize>(&self, info: &Option<T>) {
         let output = if let Some(data) = info {
             Output {
