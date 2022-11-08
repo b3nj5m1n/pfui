@@ -158,21 +158,21 @@ pub struct Mpd {}
 
 impl Module for Mpd {
     type Connection = Client;
-    fn connect(&self, timeout: u64) -> Self::Connection {
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>> {
         let mut conn_ = Client::connect("127.0.0.1:6600");
         while let Err(..) = conn_ {
             conn_ = Client::connect("127.0.0.1:6600");
-            self.print(&None::<Data>);
+            crate::print(&None::<Data>);
             sleep(Duration::new(timeout, 0));
         }
-        return conn_.unwrap();
+        return Ok(conn_?);
     }
     fn output(&self, conn: &mut Self::Connection) {
         let info = get_info(conn);
-        self.print(&info);
+        crate::print(&info);
     }
-    fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
-        let mut conn = self.connect(timeout);
+    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
+        let mut conn = self.connect(timeout)?;
         self.output(&mut conn);
         loop {
             let guard = conn.idle(&[Subsystem::Player, Subsystem::Mixer, Subsystem::Options])?;

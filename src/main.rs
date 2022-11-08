@@ -1,9 +1,9 @@
-use std::{fmt, thread::sleep, process::exit};
+use std::process::exit;
 
 use clap::{ColorChoice, Parser, Subcommand};
 
 mod modules;
-use modules::mpd;
+use modules::{mpd, pulseaudio};
 use serde::Serialize;
 
 #[derive(Parser)]
@@ -35,7 +35,9 @@ struct Start {
 
 #[derive(Subcommand)]
 enum Modules {
-    Mpd {},
+    Mpd,
+    #[command(name = "pulseaudio")]
+    PulseAudio,
 }
 
 #[derive(Debug, Serialize)]
@@ -48,30 +50,26 @@ trait Module {
     type Connection;
 
     /// This starts the event listening loop
-    fn start(&self, timeout: u64) -> Result<(), Box<dyn std::error::Error>>;
+    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>>;
 
     /// This connects to a server or similar, returns whatever is necessary to communicate with the
     /// server
-    fn connect(&self, timeout: u64) -> Self::Connection;
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>>;
 
     /// This generates the data and calls print
     fn output(&self, conn: &mut Self::Connection);
-
-    /// This actually prints the json representation of the data
-    fn print<T: serde::Serialize>(&self, info: &Option<T>) {
-        let output = if let Some(data) = info {
-            Output {
-                ok: 1,
-                data: Some(data),
-            }
-        } else {
-            Output {
-                ok: 0,
-                data: None,
-            }
-        };
-        println!("\n{}", serde_json::to_string(&output).unwrap());
-    }
+}
+/// This actually prints the json representation of the data
+pub fn print<T: serde::Serialize>(info: &Option<T>) {
+    let output = if let Some(data) = info {
+        Output {
+            ok: 1,
+            data: Some(data),
+        }
+    } else {
+        Output { ok: 0, data: None }
+    };
+    println!("\n{}", serde_json::to_string(&output).unwrap());
 }
 
 fn main() {
@@ -79,9 +77,17 @@ fn main() {
 
     match &cli.command {
         Some(Commands::Start(start)) => match start.module {
-            Modules::Mpd {} => {
+            Modules::Mpd => {
                 if cfg!(feature = "mpd") {
-                    while let Err(..) = (mpd::Mpd {}.start(5)) { }
+                    while let Err(..) = (mpd::Mpd {}.start(5)) {}
+                    exit(0);
+                } else {
+                    println!("Feature not enabled");
+                }
+            }
+            Modules::PulseAudio => {
+                if cfg!(feature = "pulseaudio") {
+                    while let Err(..) = (pulseaudio::PulseAudio {}.start(5)) {}
                     exit(0);
                 } else {
                     println!("Feature not enabled");
