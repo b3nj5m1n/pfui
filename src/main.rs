@@ -3,7 +3,7 @@ use std::process::exit;
 use clap::{ColorChoice, Parser, Subcommand};
 
 mod modules;
-use modules::{mpd, pulseaudio};
+use modules::{mpd, pulseaudio, sway};
 use serde::Serialize;
 
 #[derive(Parser)]
@@ -38,6 +38,8 @@ enum Modules {
     Mpd,
     #[command(name = "pulseaudio")]
     PulseAudio,
+    #[command(alias = "i3")]
+    Sway,
 }
 
 #[derive(Debug, Serialize)]
@@ -88,6 +90,14 @@ fn main() {
             Modules::PulseAudio => {
                 if cfg!(feature = "pulseaudio") {
                     while let Err(..) = (pulseaudio::PulseAudio {}.start(5)) {}
+                    exit(0);
+                } else {
+                    println!("Feature not enabled");
+                }
+            }
+            Modules::Sway => {
+                if cfg!(feature = "sway") {
+                    while let Err(..) = (sway::Sway {}.start(5)) {}
                     exit(0);
                 } else {
                     println!("Feature not enabled");

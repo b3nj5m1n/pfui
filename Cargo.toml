@@ -12,9 +12,10 @@ serde_json = "1.0.87"
 mpd = { version = "0.0.12", optional = true }
 time = { version = "0.1.44", optional = true }
 pulse = { version = "2.0", package = "libpulse-binding", optional = true }
+sway = { version = "3.0.1", package = "swayipc", optional = true }
 
 [features]
-default = ["mpd", "pulseaudio"]
+default = ["mpd", "pulseaudio", "sway"]
 mpd = ["dep:mpd", "dep:time"]
 pulseaudio = ["dep:pulse"]
-
+sway = ["dep:sway"]
