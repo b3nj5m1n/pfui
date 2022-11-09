@@ -1,11 +1,12 @@
 use serde::Serialize;
-use sway::{Connection, Event, EventType, Fallible};
+use sway::{Connection, Event, EventType, Fallible, Node, NodeType};
 
 use crate::Module;
 
 #[derive(Debug, Serialize)]
 struct Data {
     kbd_layout: Option<String>,
+    window_title: Option<String>,
     workspaces: Vec<Workspace>,
     binding_modes: Vec<BindingMode>,
 }
@@ -24,6 +25,15 @@ struct Workspace {
 struct BindingMode {
     name: String,
     active: bool,
+}
+
+fn flatten_nodes(node: &mut sway::Node) -> Vec<sway::Node> {
+    let mut result: Vec<sway::Node> = Vec::new();
+    for child in &mut node.nodes {
+        result.append(&mut flatten_nodes(child));
+    }
+    result.push(node.to_owned());
+    return result;
 }
 
 impl Data {
@@ -56,8 +66,33 @@ impl Data {
                 active: mode == current_binding_mode,
             })
             .collect();
+        // TODO: Make this more robust
+        // Currently, we go through all nodes that exist and find a focused on, this should work
+        // reliably on a single monitor setup, but I believe it's going to fail when multiple
+        // monitors are involved.
+        // When we call get_tree(), the data is structured as follows:
+        // We get the root node, this should be the only node at this level
+        // The root node contains monitor nodes
+        // The monitor nodes contain workspace nodes, corresponding to the workspaces on that
+        // monitor
+        // The monitor nodes contain Con nodes, which are what we're after.
+        // To make this work for multi-monitor, we'd have to extract the focused node for each
+        // monitor and then output the active window name for each monitor seperately.
+        let mut root_node = conn.get_tree().unwrap();
+        let window_title = if let Some(current_window) = flatten_nodes(&mut root_node)
+            .into_iter()
+            .filter(|node| node.node_type == NodeType::Con && node.focused)
+            .collect::<Vec<sway::Node>>()
+            .first()
+        {
+            current_window.name.clone()
+        } else {
+            None
+        };
+
         Ok(Self {
             kbd_layout: layout,
+            window_title,
             workspaces,
             binding_modes,
         })
@@ -77,13 +112,18 @@ impl Module for Sway {
         let data = Data::get(conn);
         match data {
             Ok(data) => crate::print(&Some(&data)),
-            Err(_) => crate::print::<Data>(&None)
+            Err(_) => crate::print::<Data>(&None),
         }
     }
 
     fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
         let mut conn = self.connect(timeout)?;
-        for event in Connection::new()?.subscribe([EventType::Input, EventType::Workspace])? {
+        self.output(&mut conn);
+        for event in Connection::new()?.subscribe([
+            EventType::Input,
+            EventType::Workspace,
+            EventType::Window,
+        ])? {
             self.output(&mut conn);
         }
         Ok(())
