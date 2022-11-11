@@ -1,5 +1,6 @@
 use serde::Serialize;
-use sway::{Connection, Event, EventType, Fallible, Node, NodeType};
+use sway::{Connection,EventType, NodeType};
+use anyhow::Result;
 
 use crate::Module;
 
@@ -104,7 +105,7 @@ pub struct Sway {}
 impl Module for Sway {
     type Connection = Connection;
 
-    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>> {
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection> {
         return Ok(Connection::new()?);
     }
 
@@ -116,7 +117,7 @@ impl Module for Sway {
         }
     }
 
-    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
+    fn start(&mut self, timeout: u64) -> Result<()> {
         let mut conn = self.connect(timeout)?;
         self.output(&mut conn);
         for event in Connection::new()?.subscribe([

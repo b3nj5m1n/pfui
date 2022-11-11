@@ -1,4 +1,5 @@
 use std::{thread::sleep, time::Duration};
+use anyhow::Result;
 
 use mpd::{idle::Subsystem, Client, Idle, Song as MpdSong, State as OldMpdState, Status};
 use serde::{Serialize, Serializer};
@@ -60,7 +61,7 @@ impl Serialize for MpdState {
         } else if self.0 == OldMpdState::Stop {
             return serializer.serialize_i8(2);
         }
-        Err(serde::ser::Error::custom("fuck"))
+        Err(serde::ser::Error::custom("Error serializing MpdState"))
     }
 }
 
@@ -158,7 +159,7 @@ pub struct Mpd {}
 
 impl Module for Mpd {
     type Connection = Client;
-    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>> {
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection> {
         let mut conn_ = Client::connect("127.0.0.1:6600");
         while let Err(..) = conn_ {
             conn_ = Client::connect("127.0.0.1:6600");
@@ -171,7 +172,7 @@ impl Module for Mpd {
         let info = get_info(conn);
         crate::print(&info);
     }
-    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
+    fn start(&mut self, timeout: u64) -> Result<()> {
         let mut conn = self.connect(timeout)?;
         self.output(&mut conn);
         loop {

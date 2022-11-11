@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use std::{rc::Rc, sync::Mutex, thread::sleep, time::Duration};
 
 use pulse::{
@@ -19,18 +20,17 @@ pub struct Connection {
 }
 
 impl Connection {
-    fn new(timeout: u64) -> Result<Self, Box<dyn std::error::Error>> {
+    fn new(timeout: u64) -> Result<Self> {
         let mnlp = Mainloop::new().unwrap();
-        let mut err: Box<dyn std::error::Error> = Box::new(pulse::error::Code::ConnectionRefused);
         for _ in 0..10 {
             let mut cnxt = Context::new(&mnlp, "pfui_listener").unwrap();
             match cnxt.connect(None, pulse::context::FlagSet::NOAUTOSPAWN, None) {
                 Ok(_) => return Ok(Self { cnxt, mnlp }),
-                Err(e) => err = Box::new(e),
+                Err(_) => {}
             }
             sleep(Duration::from_secs(timeout));
         }
-        return Err(err);
+        return Err(anyhow!("Timed out creating connection"));
     }
     fn connect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         loop {
@@ -60,13 +60,15 @@ pub struct PulseAudio {}
 
 impl Module for PulseAudio {
     type Connection = Connection;
-    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>> {
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection> {
         return Ok(Connection::new(timeout)?);
     }
 
-    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>> {
+    fn start(&mut self, timeout: u64) -> Result<()> {
         let mut conn = self.connect(timeout)?;
-        conn.connect()?;
+        if let Err(_) = conn.connect() {
+            return Err(anyhow!("Error establishing connection"));
+        }
         let interest = pulse::context::subscribe::InterestMaskSet::SINK;
         conn.cnxt.subscribe(interest, |_| {});
         let introspector = Rc::new(Mutex::new(conn.cnxt.introspect()));
@@ -90,7 +92,7 @@ impl Module for PulseAudio {
             })));
         match conn.mnlp.run() {
             Ok(_retval) => return Ok(()),
-            Err((e, _retval)) => return Err(Box::new(e)),
+            Err((e, _retval)) => return Err(anyhow::Error::new(e)),
         }
     }
 

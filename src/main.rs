@@ -1,4 +1,5 @@
 use std::process::exit;
+use anyhow::Result;
 
 use clap::{ColorChoice, Parser, Subcommand};
 
@@ -52,11 +53,11 @@ trait Module {
     type Connection;
 
     /// This starts the event listening loop
-    fn start(&mut self, timeout: u64) -> Result<(), Box<dyn std::error::Error>>;
+    fn start(&mut self, timeout: u64) -> Result<()>;
 
     /// This connects to a server or similar, returns whatever is necessary to communicate with the
     /// server
-    fn connect(&mut self, timeout: u64) -> Result<Self::Connection, Box<dyn std::error::Error>>;
+    fn connect(&mut self, timeout: u64) -> Result<Self::Connection>;
 
     /// This generates the data and calls print
     fn output(&self, conn: &mut Self::Connection);
