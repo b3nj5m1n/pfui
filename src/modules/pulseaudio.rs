@@ -12,6 +12,7 @@ use crate::Module;
 #[derive(Debug, Serialize)]
 struct Data {
     volume: u32,
+    muted: bool,
 }
 
 pub struct Connection {
@@ -71,7 +72,28 @@ impl Module for PulseAudio {
         }
         let interest = pulse::context::subscribe::InterestMaskSet::SINK;
         conn.cnxt.subscribe(interest, |_| {});
+        // FIXME This is quite hacky, and tbh the api is quite confusing, I'm not sure how to
+        // identify the default sink
+        // (To be clear I'm not talking about the next section but this whole module in general)
+        // One possible way to solve this would be to output the data for each available sink and
+        // let the user figure out which one to use.
         let introspector = Rc::new(Mutex::new(conn.cnxt.introspect()));
+        {
+            let i = Rc::clone(&introspector);
+            let d = i.lock().unwrap();
+            d.get_sink_info_list(|list| match list {
+                pulse::callbacks::ListResult::Item(sink) => {
+                    let avg = sink.volume.avg().0;
+                    let percent =
+                        u32::try_from((f64::from(avg) / f64::from(0x10000) * 100.0).round() as i64);
+                    match percent {
+                        Ok(percent) => crate::print(&Some(Data { volume: percent, muted: sink.mute })),
+                        Err(_) => crate::print::<Data>(&None),
+                    }
+                }
+                _ => {}
+            });
+        }
         conn.cnxt
             .set_subscribe_callback(Some(Box::new(move |_facility, _operation, index| {
                 let i = Rc::clone(&introspector);
@@ -83,7 +105,7 @@ impl Module for PulseAudio {
                             (f64::from(avg) / f64::from(0x10000) * 100.0).round() as i64,
                         );
                         match percent {
-                            Ok(percent) => crate::print(&Some(Data { volume: percent })),
+                            Ok(percent) => crate::print(&Some(Data { volume: percent, muted: item.mute })),
                             Err(_) => crate::print::<Data>(&None),
                         }
                     }
