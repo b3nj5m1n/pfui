@@ -25,13 +25,12 @@ impl Connection {
         let mnlp = Mainloop::new().unwrap();
         for _ in 0..10 {
             let mut cnxt = Context::new(&mnlp, "pfui_listener").unwrap();
-            match cnxt.connect(None, pulse::context::FlagSet::NOAUTOSPAWN, None) {
-                Ok(_) => return Ok(Self { cnxt, mnlp }),
-                Err(_) => {}
+            if cnxt.connect(None, pulse::context::FlagSet::NOAUTOSPAWN, None).is_ok() {
+                return Ok(Self { cnxt, mnlp })
             }
             sleep(Duration::from_secs(timeout));
         }
-        return Err(anyhow!("Timed out creating connection"));
+        Err(anyhow!("Timed out creating connection"))
     }
     fn connect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         loop {
@@ -62,12 +61,12 @@ pub struct PulseAudio {}
 impl Module for PulseAudio {
     type Connection = Connection;
     fn connect(&mut self, timeout: u64) -> Result<Self::Connection> {
-        return Ok(Connection::new(timeout)?);
+        Connection::new(timeout)
     }
 
     fn start(&mut self, timeout: u64) -> Result<()> {
         let mut conn = self.connect(timeout)?;
-        if let Err(_) = conn.connect() {
+        if conn.connect().is_err() {
             return Err(anyhow!("Error establishing connection"));
         }
         let interest = pulse::context::subscribe::InterestMaskSet::SINK;
@@ -81,42 +80,47 @@ impl Module for PulseAudio {
         {
             let i = Rc::clone(&introspector);
             let d = i.lock().unwrap();
-            d.get_sink_info_list(|list| match list {
-                pulse::callbacks::ListResult::Item(sink) => {
+            d.get_sink_info_list(|list| {
+                if let pulse::callbacks::ListResult::Item(sink) = list {
                     let avg = sink.volume.avg().0;
                     let percent =
                         u32::try_from((f64::from(avg) / f64::from(0x10000) * 100.0).round() as i64);
                     match percent {
-                        Ok(percent) => crate::print(&Some(Data { volume: percent, muted: sink.mute })),
+                        Ok(percent) => crate::print(&Some(Data {
+                            volume: percent,
+                            muted: sink.mute,
+                        })),
                         Err(_) => crate::print::<Data>(&None),
                     }
                 }
-                _ => {}
             });
         }
         conn.cnxt
             .set_subscribe_callback(Some(Box::new(move |_facility, _operation, index| {
                 let i = Rc::clone(&introspector);
                 let d = i.lock().unwrap();
-                d.get_sink_info_by_index(index, |s| match s {
-                    pulse::callbacks::ListResult::Item(item) => {
+                d.get_sink_info_by_index(index, |s| {
+                    if let pulse::callbacks::ListResult::Item(item) = s {
                         let avg = item.volume.avg().0;
                         let percent = u32::try_from(
                             (f64::from(avg) / f64::from(0x10000) * 100.0).round() as i64,
                         );
                         match percent {
-                            Ok(percent) => crate::print(&Some(Data { volume: percent, muted: item.mute })),
+                            Ok(percent) => crate::print(&Some(Data {
+                                volume: percent,
+                                muted: item.mute,
+                            })),
                             Err(_) => crate::print::<Data>(&None),
                         }
                     }
-                    _ => {}
                 });
             })));
         match conn.mnlp.run() {
-            Ok(_retval) => return Ok(()),
-            Err((e, _retval)) => return Err(anyhow::Error::new(e)),
+            Ok(_retval) => Ok(()),
+            Err((e, _retval)) => Err(anyhow::Error::new(e)),
         }
     }
 
+    #[allow(unused)]
     fn output(&self, conn: &mut Self::Connection) {}
 }

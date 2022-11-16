@@ -1,5 +1,5 @@
-use std::{thread::sleep, time::Duration};
 use anyhow::Result;
+use std::{thread::sleep, time::Duration};
 
 use mpd::{idle::Subsystem, Client, Idle, Song as MpdSong, State as OldMpdState, Status};
 use serde::{Serialize, Serializer};
@@ -80,16 +80,8 @@ impl From<&MpdSong> for Song {
 
 impl From<&Status> for State {
     fn from(value: &Status) -> Self {
-        let elapsed = if let Some(elapsed) = value.elapsed {
-            Some(elapsed.num_seconds())
-        } else {
-            None
-        };
-        let duration = if let Some(duration) = value.duration {
-            Some(duration.num_seconds())
-        } else {
-            None
-        };
+        let elapsed = value.elapsed.map(|elapsed| elapsed.num_seconds());
+        let duration = value.duration.map(|duration| duration.num_seconds());
         let progress = if let (Some(elapsed), Some(duration)) = (elapsed, duration) {
             if let (Ok(elapsed), Ok(duration)) = (i32::try_from(elapsed), i32::try_from(duration)) {
                 i8::try_from(((f64::from(elapsed) / f64::from(duration)) * 100.0).round() as i64)
@@ -100,12 +92,12 @@ impl From<&Status> for State {
         } else {
             None
         };
-        return State {
+        State {
             elapsed,
             duration,
             progress,
             status: Some(MpdState(value.state)),
-        };
+        }
     }
 }
 
@@ -134,17 +126,17 @@ impl
     ) -> Result<Self, Self::Error> {
         let status = value.1?;
         if let Ok(Some(current_song)) = value.0 {
-            return Ok(Data {
+            Ok(Data {
                 song: Song::from(&current_song),
                 state: State::from(&status),
                 options: Options::from(&status),
-            });
+            })
         } else {
-            return Ok(Data {
+            Ok(Data {
                 song: Song::empty(),
                 state: State::from(&status),
                 options: Options::from(&status),
-            });
+            })
         }
     }
 }
@@ -166,7 +158,7 @@ impl Module for Mpd {
             crate::print(&None::<Data>);
             sleep(Duration::new(timeout, 0));
         }
-        return Ok(conn_?);
+        Ok(conn_?)
     }
     fn output(&self, conn: &mut Self::Connection) {
         let info = get_info(conn);
@@ -177,9 +169,8 @@ impl Module for Mpd {
         self.output(&mut conn);
         loop {
             let guard = conn.idle(&[Subsystem::Player, Subsystem::Mixer, Subsystem::Options])?;
-            match guard.get() {
-                Ok(_) => self.output(&mut conn),
-                Err(_) => {}
+            if guard.get().is_ok() {
+                self.output(&mut conn)
             }
         }
     }

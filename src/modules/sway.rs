@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use serde::Serialize;
 use sway::{Connection,EventType, NodeType};
 use anyhow::Result;
@@ -34,7 +36,7 @@ fn flatten_nodes(node: &mut sway::Node) -> Vec<sway::Node> {
         result.append(&mut flatten_nodes(child));
     }
     result.push(node.to_owned());
-    return result;
+    result
 }
 
 impl Data {
@@ -106,7 +108,13 @@ impl Module for Sway {
     type Connection = Connection;
 
     fn connect(&mut self, timeout: u64) -> Result<Self::Connection> {
-        return Ok(Connection::new()?);
+        let mut conn = Connection::new();
+        while let Err(..) = conn {
+            conn = Connection::new();
+            crate::print(&None::<Data>);
+            sleep(Duration::new(timeout, 0));
+        }
+        Ok(conn?)
     }
 
     fn output(&self, conn: &mut Self::Connection) {
@@ -120,7 +128,7 @@ impl Module for Sway {
     fn start(&mut self, timeout: u64) -> Result<()> {
         let mut conn = self.connect(timeout)?;
         self.output(&mut conn);
-        for event in Connection::new()?.subscribe([
+        for _ in Connection::new()?.subscribe([
             EventType::Input,
             EventType::Workspace,
             EventType::Window,
