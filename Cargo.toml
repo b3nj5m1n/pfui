@@ -2,6 +2,12 @@
 name = "pfui"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Efficiently generate content for statusbars, especially eww"
+homepage = "https://github.com/b3nj5m1n/pfui"
+repository = "https://github.com/b3nj5m1n/pfui"
+keywords = ["eww", "statusbar"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
