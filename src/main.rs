@@ -4,7 +4,7 @@ use std::process::exit;
 use clap::{ColorChoice, Parser, Subcommand};
 
 mod modules;
-use modules::{mpd, pulseaudio, sway};
+use modules::{hyprland, mpd, pulseaudio, sway};
 use serde::Serialize;
 
 #[derive(Parser)]
@@ -41,6 +41,8 @@ enum Modules {
     PulseAudio,
     #[command(alias = "i3")]
     Sway,
+    #[command(subcommand)]
+    Hyprland(hyprland::HyprlandOpts),
 }
 
 #[derive(Debug, Serialize)]
@@ -99,6 +101,14 @@ fn main() {
             Modules::Sway => {
                 if cfg!(feature = "sway") {
                     while let Err(..) = (sway::Sway {}.start(5)) {}
+                    exit(0);
+                } else {
+                    println!("Feature not enabled");
+                }
+            }
+            Modules::Hyprland(ref opts) => {
+                if cfg!(feature = "hyprland") {
+                    while let Err(..) = hyprland::HyprlandListener::new(opts).listen() {}
                     exit(0);
                 } else {
                     println!("Feature not enabled");

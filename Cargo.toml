@@ -20,9 +20,11 @@ mpd = { version = "0.0.12", optional = true }
 time = { version = "0.1.44", optional = true }
 pulse = { version = "2.0", package = "libpulse-binding", optional = true }
 sway = { version = "3.0.1", package = "swayipc", optional = true }
+hyprland= {git = 'https://github.com/hyprland-community/hyprland-rs.git', optional = true}
 
 [features]
-default = ["mpd", "pulseaudio", "sway"]
+default = ["mpd", "pulseaudio", "sway", "hyprland"]
 mpd = ["dep:mpd", "dep:time"]
 pulseaudio = ["dep:pulse"]
 sway = ["dep:sway"]
+hyprland = ["dep:hyprland"]
