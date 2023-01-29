@@ -72,7 +72,7 @@ pub fn print<T: serde::Serialize>(info: &Option<T>) {
     } else {
         Output { ok: 0, data: None }
     };
-    println!("\n{}", serde_json::to_string(&output).unwrap());
+    println!("{}", serde_json::to_string(&output).unwrap());
 }
 
 fn main() {
