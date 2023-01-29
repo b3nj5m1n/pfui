@@ -1,5 +1,5 @@
-use std::process::exit;
 use anyhow::Result;
+use std::process::exit;
 
 use clap::{ColorChoice, Parser, Subcommand};
 

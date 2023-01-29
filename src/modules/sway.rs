@@ -1,8 +1,8 @@
 use std::{thread::sleep, time::Duration};
 
-use serde::Serialize;
-use sway::{Connection,EventType, NodeType};
 use anyhow::Result;
+use serde::Serialize;
+use sway::{Connection, EventType, NodeType};
 
 use crate::Module;
 
