@@ -7,6 +7,8 @@ mod modules;
 use modules::{hyprland, mpd, pulseaudio, sway};
 use serde::Serialize;
 
+use crate::modules::backlight;
+
 #[derive(Parser)]
 #[command(
     author,
@@ -43,6 +45,7 @@ enum Modules {
     Sway,
     #[command(subcommand)]
     Hyprland(hyprland::HyprlandOpts),
+    Backlight,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,6 +115,13 @@ fn main() {
                     exit(0);
                 } else {
                     println!("Feature not enabled");
+                }
+            }
+            Modules::Backlight => {
+                if cfg!(feature = "backlight") {
+                    backlight::Backlight::new().listen().unwrap();
+                } else {
+                    eprintln!("Feature not enabled");
                 }
             }
         },
