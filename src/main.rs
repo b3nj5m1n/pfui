@@ -46,6 +46,8 @@ enum Modules {
     #[command(subcommand)]
     Hyprland(hyprland::HyprlandOpts),
     Backlight,
+    #[command(about = "monitors external disks insert/remove, mount/umount events")]
+    Disks,
 }
 
 #[derive(Debug, Serialize)]
@@ -120,6 +122,14 @@ fn main() {
             Modules::Backlight => {
                 if cfg!(feature = "backlight") {
                     backlight::Backlight::new().listen().unwrap();
+                } else {
+                    eprintln!("Feature not enabled");
+                }
+            }
+            Modules::Disks => {
+                if cfg!(feature = "disk") {
+                    while let Err(_) = modules::disks::DiskMon::new().listen() {}
+                    exit(0);
                 } else {
                     eprintln!("Feature not enabled");
                 }
