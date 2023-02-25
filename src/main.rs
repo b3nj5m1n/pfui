@@ -43,8 +43,9 @@ enum Modules {
     PulseAudio,
     #[command(alias = "i3")]
     Sway,
-    #[command(subcommand)]
+    #[command(subcommand, about = "monitors hyprland  window,workspace etc events")]
     Hyprland(hyprland::HyprlandOpts),
+    #[command(about = "monitors for brightness change events")]
     Backlight,
     #[command(about = "monitors external disks insert/remove, mount/umount events")]
     Disks,
@@ -128,7 +129,7 @@ fn main() {
             }
             Modules::Disks => {
                 if cfg!(feature = "disk") {
-                    while let Err(_) = modules::disks::DiskMon::new().listen() {}
+                    while modules::disks::DiskMon::new().listen().is_err() {}
                     exit(0);
                 } else {
                     eprintln!("Feature not enabled");

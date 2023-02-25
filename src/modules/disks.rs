@@ -18,7 +18,7 @@ impl DiskMon {
         let drive_disc = notifier
             .add_watch("/dev/", AddWatchFlags::IN_CREATE | AddWatchFlags::IN_DELETE)
             .unwrap_or_else(|e| {
-                eprintln!("Failed to watch for devices {:?}", e);
+                eprintln!("Failed to watch for devices {e:?}");
                 exit(1);
             });
         let mount_disc = notifier
@@ -27,7 +27,7 @@ impl DiskMon {
                 AddWatchFlags::IN_CREATE | AddWatchFlags::IN_DELETE,
             )
             .unwrap_or_else(|e| {
-                eprintln!("Failed to watch for devices {:?}", e);
+                eprintln!("Failed to watch for devices {e:?}");
                 exit(1);
             });
         Self {
@@ -65,10 +65,7 @@ impl DiskMon {
                     }
                     break;
                 } else {
-                    eprintln!(
-                        "failed to find mount for {:?}, may be its not yet mounted",
-                        name
-                    );
+                    eprintln!("failed to find mount for {name:?}, may be its not yet mounted");
                     std::thread::sleep(std::time::Duration::from_millis(100));
                     retry -= 1;
                 }
@@ -91,24 +88,24 @@ impl DiskMon {
     fn handle_drives(&mut self, os_name: &OsStr, mask: AddWatchFlags) -> Result<(), ()> {
         let name_ref = os_name
             .to_str()
-            .expect(&format!("Failed to convert {:?} to str", os_name));
+            .unwrap_or_else(|| panic!("Failed to convert {os_name:?} to str"));
         if let Some(last_char) = name_ref.chars().next_back() {
             // check if the last char is digit, because generally names are in the form of /dev/sd*[1-9]
-            if !(last_char.is_digit(10) && name_ref.starts_with("sd")) {
+            if !(last_char.is_ascii_digit() && name_ref.starts_with("sd")) {
                 return Err(());
             }
             'check: {
                 if !(mask & AddWatchFlags::IN_CREATE).is_empty() {
-                    if let Some(name) = os_name.clone().to_str() {
+                    if let Some(name) = os_name.to_str() {
                         self.extern_drives.insert(String::from(name), None);
                         break 'check;
                     }
-                    eprintln!("Failed insert Disk {:?}", os_name);
+                    eprintln!("Failed insert Disk {os_name:?}");
                 } else if !(mask & AddWatchFlags::IN_DELETE).is_empty() {
                     self.extern_drives.remove(name_ref);
                     break 'check;
                 } else {
-                    eprintln!("Uncaught event {:?} for {:?}", mask, os_name);
+                    eprintln!("Uncaught event {mask:?} for {os_name:?}");
                 }
             }
         }
@@ -121,15 +118,15 @@ impl DiskMon {
                 if let Some(os_name) = &event.name {
                     // if its from mount directory
                     if event.wd == self.mount_disc {
-                        self.handle_mounts(&os_name, event.mask);
+                        self.handle_mounts(os_name, event.mask);
                     } else if event.wd == self.drive_disc {
-                        if let Err(_) = self.handle_drives(os_name, event.mask) {
+                        if self.handle_drives(os_name, event.mask).is_err() {
                             return;
                         }
                     } else {
                         unreachable!();
                     }
-                    if self.extern_drives.len() > 0 {
+                    if !self.extern_drives.is_empty() {
                         crate::print(&Some(&self.extern_drives));
                     } else {
                         crate::print::<()>(&None);
