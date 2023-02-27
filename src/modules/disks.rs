@@ -1,8 +1,6 @@
 use nix::sys::inotify::{AddWatchFlags, InitFlags, Inotify, WatchDescriptor};
 use std::{collections::HashMap, ffi::OsStr, path::PathBuf, process::exit};
 
-const MEDIA_DIR: &str = concat!("/run/media/", env!("USER"));
-
 const RETRY_COUNT: i64 = 10;
 
 pub struct DiskMon {
@@ -21,9 +19,13 @@ impl DiskMon {
                 eprintln!("Failed to watch for devices {e:?}");
                 exit(1);
             });
+        let media_dir = String::from("/run/media/")
+            + std::env::var("USER")
+                .expect("Unable to identify user")
+                .as_str();
         let mount_disc = notifier
             .add_watch(
-                MEDIA_DIR,
+                media_dir.as_str(),
                 AddWatchFlags::IN_CREATE | AddWatchFlags::IN_DELETE,
             )
             .unwrap_or_else(|e| {
