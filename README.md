@@ -1,3 +1,5 @@
+
+
 # pfui
 
 Efficiently generate content for statusbars, especially eww
@@ -30,7 +32,7 @@ At the time of writing this readme, the first real commit was about 20 minutes a
 
 ### Build the project
 
-Git clone, make sure you have cargo installed, run `cargo build --release`. By default, all modules are included, you can manually exclude/include some using feature flags, since there's currently only one module I won't add a list now because I'll forget to update it, just look in the Cargo.toml.
+Git clone, make sure you have cargo installed, run `cargo build --release`. By default, all modules are included. You can manually exclude/include some using feature flags. The available modules are `mpd`, `pulseaudio`, `sway`, `hyprland`, and `backlight`.
 
 Optionally make sure the binary (`target/release/pfui`) is somewhere on your `PATH`.
 
