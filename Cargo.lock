@@ -278,6 +278,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mountinfo"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6341a1c48d5425a185c43f75480227dc738cf85ecc6a4bc8ca847406d44f1c17"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "mpd"
 version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -379,6 +388,7 @@ dependencies = [
  "clap",
  "hyprland",
  "libpulse-binding",
+ "mountinfo",
  "mpd",
  "nix",
  "serde",

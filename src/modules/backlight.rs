@@ -29,7 +29,7 @@ impl Backlight {
         notifier
             .add_watch(&actual_brightness, AddWatchFlags::IN_MODIFY)
             .unwrap_or_else(|error_nu| {
-                eprintln!("Failed to listen on {:?}: {error_nu}", display_path);
+                eprintln!("Failed to listen on {display_path:?}: {error_nu}");
                 exit(1);
             });
         Self {
